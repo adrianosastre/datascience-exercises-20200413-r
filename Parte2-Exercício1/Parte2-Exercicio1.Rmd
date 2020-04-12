@@ -1,0 +1,307 @@
+---
+title: "Dataset Spotify - package spotifyr"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+Importando libraries:
+
+```{r}
+install.packages("tidyverse")
+install.packages("corrplot")
+install.packages("janitor")
+install.packages("lubridate")
+install.packages("gapminder")
+install.packages("fpp2")
+install.packages("seasonal")
+install.packages("dplyr")
+
+library(tidyverse)
+library(corrplot)
+library(janitor)
+library(lubridate)
+library(gapminder)
+library(fpp2)
+library(seasonal)
+library(dplyr)
+```
+
+
+Os autores do package compilaram mais de 5.000 músicas de gêneros e subgêneros distintos. O descritivo do dataset, bem como a obtenção dos dados em si, está toda no seguinte repositório: <https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-01-21/readme.md>
+
+```{r}
+spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
+
+```
+
+Verificação inicial do dataframe:
+
+```{r}
+head(spotify_songs)
+tail(spotify_songs)
+str(spotify_songs)
+glimpse(spotify_songs)
+summary(spotify_songs)
+```
+
+Alterando tipo do campo track_album_release_date para Date, e removendo NA e valores zerados:
+
+```{r}
+# Alterando release date para Date:
+spotify_songs$track_album_release_date = lubridate::ymd(spotify_songs$track_album_release_date)
+class(spotify_songs$track_album_release_date)
+
+# Adicionando campo ano:
+years = substring(c(spotify_songs$track_album_release_date),0,4)
+spotify_songs <- mutate(spotify_songs, track_album_year = years)
+
+# Removendo NA:
+spotify_songs <- na.omit(spotify_songs)
+
+# Removendo valores 0:
+spotify_songs <- filter(
+  spotify_songs, 
+  track_popularity != 0, 
+  danceability != 0, 
+  energy != 0
+)
+
+glimpse(spotify_songs)
+```
+
+
+a) Use e abuse de todo o ferramental aprendido (e também do que será aprendido, por ventura, em consultas ao Google). A avaliação será feita tanto em cima da riqueza do código em si (em termos do ferramental usado) quanto do aprofundamento analítico na exploração dos dados e obtenção de informaçõese relações úteis.
+
+Agrupando por gênero, para fazer análise por gênero:
+
+```{r}
+
+spotify_songs_by_genre <- spotify_songs %>%
+  group_by(playlist_genre, track_album_release_date) %>% 
+  summarise(track_popularity = sum(track_popularity, na.rm = TRUE),
+            danceability = mean(danceability, na.rm = TRUE),
+            energy = mean(energy, na.rm = TRUE)) %>% 
+  ungroup()
+
+glimpse(spotify_songs_by_genre)
+
+## Nesting (agrupando) por gênero:
+
+spotify_songs_by_genre_nested <- spotify_songs_by_genre %>% 
+  group_by(playlist_genre) %>% 
+  nest()
+
+glimpse(spotify_songs_by_genre_nested)
+
+```
+
+Agrupando por ano, para fazer análise ano-a-ano:
+
+```{r}
+
+spotify_songs_by_year <- spotify_songs %>%
+  group_by(playlist_genre, track_album_year) %>% 
+  summarise(track_popularity = sum(track_popularity, na.rm = TRUE),
+            danceability = mean(danceability, na.rm = TRUE),
+            energy = mean(energy, na.rm = TRUE)) %>% 
+  ungroup()
+
+glimpse(spotify_songs_by_year)
+
+## Nesting (agrupando) por gênero:
+
+spotify_songs_by_year_nested <- spotify_songs_by_year %>% 
+  group_by(track_album_year) %>% 
+  nest()
+
+glimpse(spotify_songs_by_year)
+
+```
+
+
+Quais os gêneros mais populares?
+
+```{r}
+
+chart_1 <- spotify_songs_by_genre %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = playlist_genre, y = track_popularity)) +
+  geom_line()
+
+plotly::ggplotly(chart_1)
+
+```
+
+Músicas de 2019 são as mais populares: 
+
+```{r}
+
+chart_2 <- spotify_songs_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = track_album_year, y = track_popularity)) +
+  geom_line()
+
+plotly::ggplotly(chart_2)
+
+```
+
+Número de músicas por gênero:
+
+```{r}
+
+chart_3 <- spotify_songs_by_genre %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = playlist_genre)) +
+  geom_bar()
+
+plotly::ggplotly(chart_3)
+
+```
+
+Danceability de músicas por ano:
+
+```{r}
+
+chart_4 <- spotify_songs_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = track_album_year, y = danceability)) +
+  geom_col()
+
+plotly::ggplotly(chart_4)
+
+```
+
+Energia de músicas por ano:
+
+```{r}
+
+chart_5 <- spotify_songs_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = track_album_year, y = energy)) +
+  geom_col()
+
+plotly::ggplotly(chart_5)
+
+```
+
+Músicas com maior energia são mais populares:
+
+```{r}
+
+chart_6 <- spotify_songs_by_genre %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = energy, y = track_popularity)) +
+  geom_line()
+
+#chart_spotify_songs_by_genre
+
+plotly::ggplotly(chart_6)
+
+```
+
+Músicas com maior danceability também são mais populares:
+
+```{r}
+
+chart_7 <- spotify_songs_by_genre %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = danceability, y = track_popularity)) +
+  geom_line()
+
+#chart_spotify_songs_by_genre
+
+plotly::ggplotly(chart_7)
+
+```
+
+Gráfico de danceability por gênero:
+
+```{r}
+
+chart_8 <- spotify_songs_by_year %>% 
+  ggplot(aes(x = playlist_genre, y = danceability)) +
+  geom_point() +
+   theme(legend.position = "bottom")
+
+plotly::ggplotly(chart_8)
+```
+
+Gráfico de energia por gênero:
+
+```{r}
+chart_9 <- spotify_songs_by_year %>% 
+  ggplot(aes(x = playlist_genre, y = energy)) +
+  geom_point() +
+   theme(legend.position = "bottom")
+
+#chart_spotify_songs_by_genre
+
+plotly::ggplotly(chart_9)
+```
+
+Popularidade por ano:
+
+```{r}
+chart_10 <- spotify_songs_by_year %>% 
+  ggplot(aes(x = track_album_year, y = track_popularity)) +
+  geom_point() +
+   theme(legend.position = "bottom")
+
+#chart_spotify_songs_by_genre
+
+plotly::ggplotly(chart_10)
+```
+
+Popularidade por gênero:
+
+```{r}
+chart_11 <- spotify_songs_by_year %>% 
+  ggplot(aes(x = playlist_genre, y = track_popularity)) +
+  geom_point() +
+   theme(legend.position = "bottom")
+
+#chart_spotify_songs_by_genre
+
+plotly::ggplotly(chart_11)
+```
+
+Correlação entre variáveis? Podemos ver alta correlação entre Danceabilty x Energy
+
+```{r}
+
+# Selecionando algumas colunas para taxa de variação (número índice):
+spotify_songs_tv <- spotify_songs %>% select(
+  track_id,
+  track_popularity,
+  danceability,
+  energy
+)
+
+#View(spotify_songs_tv)
+
+spotify_songs_tv$track_popularity[1] <-  100; 
+for(i in 2:length(spotify_songs_tv$track_popularity)){
+  spotify_songs_tv$track_popularity[i] <-  (1 + spotify_songs$track_popularity[i]/100) * spotify_songs_tv$track_popularity[i-1]
+}
+
+spotify_songs_tv$danceability[1] <-  100; 
+for(i in 2:length(spotify_songs_tv$danceability)){
+  spotify_songs_tv$danceability[i] <-  (1 + spotify_songs$danceability[i]/100) * spotify_songs_tv$danceability[i-1]
+}
+
+spotify_songs_tv$energy[1] <-  100; 
+for(i in 2:length(spotify_songs_tv$energy)){
+  spotify_songs_tv$energy[i] <-  (1 + spotify_songs$energy[i]/100) * spotify_songs_tv$energy[i-1]
+}
+
+spotify_songs_tv_cor <- cor(spotify_songs_tv %>% select(-"track_id")) %>% round(2) 
+
+print(spotify_songs_tv_cor)
+
+corrplot::corrplot(spotify_songs_tv_cor, type = "upper", tl.col = "black")
+
+
+```

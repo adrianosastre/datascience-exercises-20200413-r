@@ -1,0 +1,143 @@
+---
+title: "Séries de tempo, ciclo, sazonalidade e tendência"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+Importando libraries:
+
+```{r}
+install.packages("tidyverse")
+install.packages("corrplot")
+install.packages("janitor")
+install.packages("lubridate")
+install.packages("gapminder")
+install.packages("fpp2")
+install.packages("seasonal")
+
+library(tidyverse)
+library(corrplot)
+library(janitor)
+library(lubridate)
+library(gapminder)
+library(fpp2)
+library(seasonal)
+
+```
+
+Setando o diretório corrente:
+
+```{r}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+getwd()
+```
+
+O arquivo "retail.xlsx" contém informações sobre vendas mensais de varejo para diversos estados da Austrália.
+
+a) Leia os dados contidos no arquivo "retail.xlsx". 
+
+```{r}
+retail_data = readxl::read_excel("./retail.xlsx", skip = 1)
+retail_data = janitor::clean_names(retail_data)
+
+View(retail_data)
+```
+
+Qual cuidado adicional você precisou ter ao realizar essa importação?
+
+RESPOSTA = 
+  - Tive que utilizar a função readxl::read_excel passando o parâmetro skip = 1 para não importar a primeira linha da planilha.
+
+b) Selecione uma das variáveis e as converta para o formato "time series".
+
+```{r}
+retail_data$series_id = lubridate::ymd(retail_data$series_id)
+class(retail_data$series_id)
+
+# a3349396w = Turnover ;  Total (State) ;  Total (Industry) ;
+# first date = 1982-04-01
+
+retail_data_total_ts <- ts(retail_data$a3349396w, start = c(1982, 1), frequency = 12)
+class(retail_data_total_ts)
+
+```
+
+RESPOSTA = series_id convertido para date, criado variável retail_data_total_ts como time-series do total de turnover, desde 1982.
+
+c) Explore a série escolhida por meio da construção de gráficos. Em particular, se estiver utilizando o R, teste as funções ggseasonplot e ggmonthplot. 
+
+```{r}
+# a3349396w = Turnover ;  Total (State) ;  Total (Industry) ;
+
+seasonplot(
+  x = retail_data_total_ts,
+  season.labels = NULL,
+  year.labels = FALSE,
+  year.labels.left = FALSE,
+  type = "o",
+  xlab = NULL,
+  ylab = "",
+  col = 1,
+  labelgap = 0.1
+)
+
+ggseasonplot(
+  x = retail_data_total_ts,
+  season.labels = NULL,
+  year.labels = FALSE,
+  year.labels.left = FALSE,
+  type = NULL,
+  col = NULL,
+  continuous = TRUE,
+  polar = FALSE,
+  labelgap = 0.04
+)
+
+ggseasonplot(
+  x = retail_data_total_ts,
+  season.labels = NULL,
+  year.labels = FALSE,
+  year.labels.left = FALSE,
+  type = NULL,
+  col = NULL,
+  continuous = TRUE,
+  polar = TRUE,
+)
+
+ggmonthplot(
+  x = retail_data_total_ts
+)
+
+```
+
+O que você consegue identificar em termos de ciclo, sazonalidade e tendência?
+RESPOSTA = 
+  - com ggseasonplot, é possível verificar que as vendas foram consistentemente aumentando ano a ano, e o mês com mais vendas é setembro, equanto que com menos venda é novembro. Interessante ver a mesma informação com o gráfico na forma de POLAR também.
+  - com ggmonthplot também é possível ver, para cada mês do ano, como as vendas aumentaram ano após ano, com algumas pequenas exceções. 
+
+d) Decomponha a série utilizando o método X11. 
+
+```{r}
+fit_x11 <- retail_data_total_ts %>% seas(x11="")
+
+autoplot(fit_x11) +
+  ggtitle("Total Turnover")
+
+autoplot(elecequip, series="Data") +
+  autolayer(trendcycle(fit_x11), series="Trend") +
+  autolayer(seasadj(fit_x11), series="Seasonally Adjusted") +
+  xlab("Year") + ylab("New orders index") +
+  ggtitle("Total Turnover") +
+  scale_colour_manual(values=c("gray","blue","red"),
+             breaks=c("Data","Seasonally Adjusted","Trend"))
+
+```
+
+Ele revela algum outlier ou padrões anômalos não identificados anteriormente?
+
+RESPOSTA = 
+  - Não consegui identificar outliers ou padrões anômalos, somente os padrões já identificados anteriormente, confirmados aqui.
+
