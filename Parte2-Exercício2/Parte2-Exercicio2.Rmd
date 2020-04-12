@@ -1,0 +1,190 @@
+---
+title: "Video Games Dataset"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+Importando libraries:
+
+```{r}
+library(tidyverse)
+library(corrplot)
+library(janitor)
+library(lubridate)
+library(gapminder)
+library(fpp2)
+library(seasonal)
+library(dplyr)
+library(gdata)
+```
+
+O dataset contém dados como a data de lançamento, desenvolvedor, tempo médio jogado, etc. O descritivo do dataset, bem como a obtenção dos dados em si, está toda no seguinte repositório: <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-30>
+
+
+```{r}
+video_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-30/video_games.csv")
+
+```
+
+Verificação inicial do dataframe:
+
+```{r}
+head(video_games)
+tail(video_games)
+str(video_games)
+glimpse(video_games)
+summary(video_games)
+```
+
+Alterando tipo do campo release_date para Date, e removendo NA e valores zerados:
+
+```{r}
+# Alterando release date para Date:
+video_games$release_date = as.Date(video_games$release_date, "%b %d, %Y")
+class(video_games$release_date)
+
+# Adicionando campo ano:
+years = substring(c(video_games$release_date),0,4)
+video_games <- mutate(video_games, release_year = years)
+
+# Adicionando campo máximo de owners, numérico:
+video_games <- mutate(video_games, max_owners = trim(word(video_games$owners, -1, sep = fixed('..'))))
+video_games <- mutate(video_games, max_owners = str_replace_all(video_games$max_owners, "[,]", ""))
+video_games$max_owners = as.numeric(video_games$max_owners)
+
+glimpse(video_games)
+```
+
+
+a) Use e abuse de todo o ferramental aprendido (e também do que será aprendido, por ventura, em consultas ao Google). A avaliação será feita tanto em cima da riqueza do código em si (em termos do ferramental usado) quanto do aprofundamento analítico na exploração dos dados e obtenção de informaçõese relações úteis.
+
+Agrupando por publisher, para fazer análise por publisher:
+
+```{r}
+
+video_games_by_publisher <- video_games %>%
+  group_by(publisher) %>% 
+  summarise(price = mean(price, na.rm = TRUE),
+            metascore = mean(metascore, na.rm = TRUE),
+            max_owners = mean(max_owners, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+# Removendo NA:
+video_games_by_publisher <- na.omit(video_games_by_publisher)
+
+glimpse(video_games_by_publisher)
+
+```
+
+Agrupando por ano, para fazer análise ano-a-ano:
+
+```{r}
+
+video_games_by_year <- video_games %>%
+  group_by(release_year) %>% 
+  summarise(price = mean(price, na.rm = TRUE),
+            metascore = mean(metascore, na.rm = TRUE),
+            max_owners = mean(max_owners, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+glimpse(video_games_by_year)
+
+```
+
+Score de games por publisher:
+
+```{r}
+
+chart_3 <- video_games_by_publisher %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = publisher, y = metascore)) +
+  geom_col()
+
+plotly::ggplotly(chart_3)
+
+```
+
+Video games score por ano:
+
+```{r}
+
+chart_4 <- video_games_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = release_year, y = metascore)) +
+  geom_col()
+
+plotly::ggplotly(chart_4)
+
+```
+
+Video games max owners por ano:
+
+```{r}
+
+chart_4 <- video_games_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = release_year, y = max_owners)) +
+  geom_col()
+
+plotly::ggplotly(chart_4)
+
+```
+
+Video games preço por ano:
+
+```{r}
+
+chart_4 <- video_games_by_year %>% 
+  #filter(playlist_genre == "rock") %>%
+  ggplot(aes(x = release_year, y = price)) +
+  geom_col()
+
+plotly::ggplotly(chart_4)
+
+```
+
+Correlação entre variáveis? 
+Não consegui ver nenhuma.
+
+```{r}
+
+# Removendo NA:
+video_games <- na.omit(video_games)
+
+# Selecionando algumas colunas para taxa de variação (número índice):
+video_games_tv <- video_games %>% select(
+  number,
+  price,
+  metascore,
+  max_owners
+)
+
+#View(video_games_tv)
+
+video_games_tv$price[1] <-  100; 
+for(i in 2:length(video_games_tv$price)){
+  video_games_tv$price[i] <-  (1 + video_games$price[i]/100) * video_games_tv$price[i-1]
+}
+
+video_games_tv$metascore[1] <-  100; 
+for(i in 2:length(video_games_tv$metascore)){
+  video_games_tv$metascore[i] <-  (1 + video_games$metascore[i]/100) * video_games_tv$metascore[i-1]
+}
+
+video_games_tv$max_owners[1] <-  100; 
+for(i in 2:length(video_games_tv$max_owners)){
+  video_games_tv$max_owners[i] <-  (1 + video_games$max_owners[i]/100) * video_games_tv$max_owners[i-1]
+}
+
+video_games_tv_cor <- cor(video_games_tv %>% select(-"number")) %>% round(2) 
+
+print(video_games_tv_cor)
+
+corrplot::corrplot(video_games_tv_cor, type = "upper", tl.col = "black")
+
+```

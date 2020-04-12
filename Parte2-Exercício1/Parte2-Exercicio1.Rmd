@@ -10,15 +10,6 @@ output:
 Importando libraries:
 
 ```{r}
-install.packages("tidyverse")
-install.packages("corrplot")
-install.packages("janitor")
-install.packages("lubridate")
-install.packages("gapminder")
-install.packages("fpp2")
-install.packages("seasonal")
-install.packages("dplyr")
-
 library(tidyverse)
 library(corrplot)
 library(janitor)

@@ -10,10 +10,6 @@ output:
 Importando libraries:
 
 ```{r}
-install.packages("tidyverse")
-install.packages("corrplot")
-install.packages("randomForest")
-
 library(tidyverse)
 library(corrplot)
 library(randomForest)
